@@ -94,7 +94,7 @@
   }
 
   .price-badge {
-    display: inline-block;
+    display: block;
     background: linear-gradient(135deg, rgba(0,200,255,0.15), rgba(0,200,255,0.05));
     border: 1px solid rgba(0,200,255,0.3);
     color: var(--cyan);
@@ -104,7 +104,6 @@
     padding: 6px 18px;
     border-radius: 30px;
     margin-bottom: 20px;
-    display: block;
     text-align: center;
   }
 
@@ -255,6 +254,61 @@
     transition: all 0.2s;
   }
   .btn-ghost:hover { border-color: var(--muted); color: var(--text); }
+
+  /* ===== SUCCESS SPLASH ===== */
+  #success-splash {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: var(--bg);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 30px;
+  }
+
+  #success-splash.show { display: flex; }
+
+  .splash-icon {
+    font-size: 72px;
+    margin-bottom: 20px;
+    animation: popIn 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  .splash-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(22px, 5vw, 36px);
+    font-weight: 900;
+    color: var(--green);
+    text-shadow: 0 0 30px rgba(0,255,136,0.6);
+    margin-bottom: 10px;
+    letter-spacing: 3px;
+  }
+
+  .splash-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 30px;
+    line-height: 1.8;
+  }
+
+  .splash-bar-wrap {
+    width: 220px;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .splash-bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--green);
+    border-radius: 2px;
+    transition: width 1.8s linear;
+  }
 
   /* ===== APP SCREEN ===== */
   #app-screen { display: none; }
@@ -535,6 +589,18 @@
 <body>
 
 <!-- ============================================================ -->
+<!-- SUCCESS SPLASH (shown after payment, before app loads)        -->
+<!-- ============================================================ -->
+<div id="success-splash">
+  <div class="splash-icon">🎉</div>
+  <div class="splash-title">ACCESS UNLOCKED</div>
+  <div class="splash-sub">Payment confirmed. Welcome to Crash Oracle.<br>Loading your predictor...</div>
+  <div class="splash-bar-wrap">
+    <div class="splash-bar-fill" id="splash-bar"></div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
 <!-- AUTH SCREEN                                                   -->
 <!-- ============================================================ -->
 <div id="auth-screen">
@@ -727,14 +793,38 @@ document.addEventListener("DOMContentLoaded", () => {
 // SCREEN SWITCHING
 // ================================================================
 function showApp() {
-  document.getElementById("auth-screen").style.display = "none";
-  document.getElementById("app-screen").style.display  = "block";
+  document.getElementById("auth-screen").style.display    = "none";
+  document.getElementById("success-splash").classList.remove("show");
+  document.getElementById("app-screen").style.display     = "block";
 }
 
 function showAuth() {
-  document.getElementById("auth-screen").style.display = "block";
-  document.getElementById("app-screen").style.display  = "none";
+  document.getElementById("auth-screen").style.display    = "flex";
+  document.getElementById("success-splash").classList.remove("show");
+  document.getElementById("app-screen").style.display     = "none";
   if (fetchTimer) { clearInterval(fetchTimer); fetchTimer = null; }
+}
+
+/**
+ * Show the green "Access Unlocked" splash for ~2s, then reveal the app.
+ * Called only after a fresh STK payment — not on normal login.
+ */
+function showSuccessSplash(onComplete) {
+  document.getElementById("auth-screen").style.display    = "none";
+  document.getElementById("app-screen").style.display     = "none";
+  document.getElementById("success-splash").classList.add("show");
+
+  // Animate the progress bar
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.getElementById("splash-bar").style.width = "100%";
+    });
+  });
+
+  setTimeout(() => {
+    document.getElementById("success-splash").classList.remove("show");
+    onComplete();
+  }, 2200);
 }
 
 function switchToLogin() {
@@ -754,7 +844,8 @@ function cancelSTK() {
   document.getElementById("stk-waiting").style.display = "none";
   document.getElementById("reg-form").style.display    = "block";
   const btn = document.getElementById("btn-register");
-  btn.disabled = false; btn.innerText = "💚 Pay KES 1,800 & Unlock Access";
+  btn.disabled = false;
+  btn.innerText = "💚 Pay KES 1,800 & Unlock Access";
 }
 
 // ================================================================
@@ -771,7 +862,8 @@ async function doRegister() {
   if (/^(\d)\1{3}$/.test(pin))   return authToast("PIN too simple — avoid 1111", "error");
 
   const btn = document.getElementById("btn-register");
-  btn.disabled = true; btn.innerText = "⏳ Sending M-Pesa prompt...";
+  btn.disabled = true;
+  btn.innerText = "⏳ Sending M-Pesa prompt...";
 
   try {
     const res  = await fetch(BACKEND + "/api/auth/register", {
@@ -783,7 +875,8 @@ async function doRegister() {
 
     if (!res.ok) {
       authToast(data.message || "Registration failed", "error");
-      btn.disabled = false; btn.innerText = "💚 Pay KES 1,800 & Unlock Access";
+      btn.disabled = false;
+      btn.innerText = "💚 Pay KES 1,800 & Unlock Access";
       return;
     }
 
@@ -797,7 +890,8 @@ async function doRegister() {
 
   } catch {
     authToast("Network error. Check connection and try again.", "error");
-    btn.disabled = false; btn.innerText = "💚 Pay KES 1,800 & Unlock Access";
+    btn.disabled = false;
+    btn.innerText = "💚 Pay KES 1,800 & Unlock Access";
   }
 }
 
@@ -815,15 +909,25 @@ function pollRegistration(reference) {
       const data = await res.json();
 
       if (data.status === "success") {
-        clearInterval(pollRef); pollRef = null;
-        setSTKStatus("success", "✅ Payment confirmed! Account created.");
+        // ── PAYMENT CONFIRMED ──────────────────────────────────
+        clearInterval(pollRef);
+        pollRef = null;
+
+        setSTKStatus("success", "✅ Payment confirmed!");
+
+        // Store the token BEFORE navigating
         token = data.token;
         localStorage.setItem("pred_token", token);
-        authToast("🎉 Welcome! Access unlocked.", "success");
-        setTimeout(() => { showApp(); startFetching(); }, 1500);
+
+        // Show celebration splash, THEN launch the app
+        showSuccessSplash(() => {
+          showApp();
+          startFetching();
+        });
 
       } else if (data.status === "failed") {
-        clearInterval(pollRef); pollRef = null;
+        clearInterval(pollRef);
+        pollRef = null;
         setSTKStatus("failed", "❌ Payment failed or cancelled");
         setTimeout(() => {
           cancelSTK();
@@ -832,7 +936,8 @@ function pollRegistration(reference) {
 
       } else if (attempts >= 24) {
         // 2 minutes timeout
-        clearInterval(pollRef); pollRef = null;
+        clearInterval(pollRef);
+        pollRef = null;
         setSTKStatus("failed", "⏱ Timed out — please try again");
         setTimeout(() => {
           cancelSTK();
@@ -861,7 +966,8 @@ async function doLogin() {
   if (!phone || !pin) return authToast("Enter phone and PIN", "error");
 
   const btn = document.getElementById("btn-login");
-  btn.disabled = true; btn.innerText = "Signing in...";
+  btn.disabled = true;
+  btn.innerText = "Signing in...";
 
   try {
     const res  = await fetch(BACKEND + "/api/auth/login", {
@@ -871,15 +977,22 @@ async function doLogin() {
     });
     const data = await res.json();
 
-    if (!res.ok) { authToast(data.message || "Login failed", "error"); return; }
+    if (!res.ok) {
+      authToast(data.message || "Login failed", "error");
+      return;
+    }
 
     token = data.token;
     localStorage.setItem("pred_token", token);
     showApp();
     startFetching();
 
-  } catch { authToast("Network error", "error"); }
-  finally { btn.disabled = false; btn.innerText = "Sign In →"; }
+  } catch {
+    authToast("Network error", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerText = "Sign In →";
+  }
 }
 
 // ================================================================
@@ -897,8 +1010,8 @@ function logout() {
 // ================================================================
 function authToast(msg, type) {
   const t = document.getElementById("auth-toast");
-  t.innerText    = msg;
-  t.className    = "auth-toast " + type;
+  t.innerText     = msg;
+  t.className     = "auth-toast " + type;
   t.style.display = "block";
   setTimeout(() => { t.style.display = "none"; }, 4000);
 }
@@ -907,8 +1020,8 @@ function authToast(msg, type) {
 // START FETCHING
 // ================================================================
 function startFetching() {
-  fetchAndUpdate();
   if (fetchTimer) clearInterval(fetchTimer);
+  fetchAndUpdate();
   fetchTimer = setInterval(fetchAndUpdate, 2000);
 }
 
@@ -953,16 +1066,15 @@ function updatePrediction1(data) {
   if (!val) return;
   el("pred-1").innerText = val.toFixed(2) + "x";
   const { cls, zoneText, zoneClass } = getZone(val);
-  el("pred-1").className  = "pred-value " + cls;
-  el("zone-1").innerText  = zoneText;
-  el("zone-1").className  = "pred-zone " + zoneClass;
+  el("pred-1").className        = "pred-value " + cls;
+  el("zone-1").innerText        = zoneText;
+  el("zone-1").className        = "pred-zone " + zoneClass;
   el("conf-1").style.width      = "100%";
   el("conf-1").style.background = "var(--cyan)";
 }
 
 // ================================================================
 // PREDICTION 2 — tightened statistical estimate
-// Reflects real house-edge distribution: ~60% crash below 2x
 // ================================================================
 function updatePrediction2(data) {
   const hist = (data.history || []).map(Number);
@@ -975,30 +1087,28 @@ function updatePrediction2(data) {
   let estimate;
 
   if (roll < 0.60) {
-    estimate = 1.01 + Math.random() * 0.88;      // 1.01–1.89  (danger zone)
+    estimate = 1.01 + Math.random() * 0.88;
   } else if (roll < 0.82) {
-    estimate = 1.90 + Math.random() * 1.80;      // 1.90–3.70  (mid)
+    estimate = 1.90 + Math.random() * 1.80;
   } else if (roll < 0.94) {
-    estimate = 3.70 + Math.random() * 3.50;      // 3.70–7.20  (high)
+    estimate = 3.70 + Math.random() * 3.50;
   } else {
-    estimate = 7.20 + Math.random() * 8.00;      // 7.20–15.20 (rocket — rare)
+    estimate = 7.20 + Math.random() * 8.00;
   }
 
-  // Regression after big crash
   if (last > 10) estimate = Math.min(estimate, 2.0);
   if (last > 6)  estimate = Math.min(estimate, 3.0);
 
-  // Tighten down if recent history has been generous
   if (aboveTwo >= 4) estimate = Math.min(estimate, 1.80 + Math.random() * 0.5);
   if (aboveTwo >= 5) estimate = Math.min(estimate, 1.40 + Math.random() * 0.4);
 
   estimate = Math.max(1.01, Math.round(estimate * 100) / 100);
 
-  el("pred-2").innerText  = estimate.toFixed(2) + "x";
+  el("pred-2").innerText        = estimate.toFixed(2) + "x";
   const { cls, zoneText, zoneClass } = getZone(estimate);
-  el("pred-2").className  = "pred-value " + cls;
-  el("zone-2").innerText  = zoneText;
-  el("zone-2").className  = "pred-zone " + zoneClass;
+  el("pred-2").className        = "pred-value " + cls;
+  el("zone-2").innerText        = zoneText;
+  el("zone-2").className        = "pred-zone " + zoneClass;
 
   const conf = 38 + Math.floor(Math.random() * 22);
   el("conf-2").style.width      = conf + "%";
@@ -1016,7 +1126,7 @@ function getZone(val) {
 }
 
 function updateStatusBar(data) {
-  el("sb-round").innerText = data.roundId    || "—";
+  el("sb-round").innerText = data.roundId      || "—";
   el("sb-state").innerText = data.currentState || "—";
 }
 
@@ -1025,14 +1135,17 @@ function updateCurrentRound(data) {
   const m = el("cur-mult");
   const s = el("cur-state");
   if (data.currentState === "FLYING") {
-    m.innerText = data.currentMult.toFixed(2) + "x"; m.className = "stat-value flying";
+    m.innerText = data.currentMult.toFixed(2) + "x";
+    m.className = "stat-value flying";
   } else if (data.currentState === "WAITING") {
-    m.innerText = data.countdown + "s";               m.className = "stat-value";
+    m.innerText = data.countdown + "s";
+    m.className = "stat-value";
   } else {
-    m.innerText = "—";                                m.className = "stat-value crashed";
+    m.innerText = "—";
+    m.className = "stat-value crashed";
   }
   s.innerText  = data.currentState || "—";
-  s.className  = "stat-value " + (data.currentState==="FLYING"?"flying":data.currentState==="CRASHED"?"crashed":"");
+  s.className  = "stat-value " + (data.currentState === "FLYING" ? "flying" : data.currentState === "CRASHED" ? "crashed" : "");
 }
 
 function setConnected(ok) {
