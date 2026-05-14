@@ -389,12 +389,12 @@
     <div id="register-panel" class="auth-card">
       <div class="auth-card-title">Create Account</div>
       <div class="auth-card-sub">One-time M-Pesa payment to unlock lifetime access</div>
-      <div class="price-badge">KES 1,800</div>
+      <div class="price-badge">KES 1,250</div>
       <div id="reg-form">
         <div class="auth-field"><label>M-Pesa Phone Number</label><input type="tel" id="r-phone" placeholder="0712345678" maxlength="12"></div>
         <div class="auth-field"><label>Create 4-Digit PIN</label><input type="password" id="r-pin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
         <div class="auth-field"><label>Confirm PIN</label><input type="password" id="r-pin2" placeholder="••••" maxlength="4" inputmode="numeric" onkeydown="if(event.key==='Enter') doRegister()"></div>
-        <button class="auth-btn" id="btn-register" onclick="doRegister()">💚 Pay KES 1,800 & Unlock Access</button>
+        <button class="auth-btn" id="btn-register" onclick="doRegister()">💚 Pay KES 1,250 & Unlock Access</button>
       </div>
       <div id="stk-waiting" style="display:none">
         <div class="stk-waiting-box">
@@ -423,7 +423,7 @@
       <div class="auth-field"><label>Phone Number</label><input type="tel" id="l-phone" placeholder="0712345678" maxlength="12"></div>
       <div class="auth-field"><label>4-Digit PIN</label><input type="password" id="l-pin" placeholder="••••" maxlength="4" inputmode="numeric" onkeydown="if(event.key==='Enter') doLogin()"></div>
       <button class="auth-btn" id="btn-login" onclick="doLogin()">Sign In →</button>
-      <div class="auth-switch">No account? <a onclick="switchToRegister()">Register (KES 1,800)</a></div>
+      <div class="auth-switch">No account? <a onclick="switchToRegister()">Register (KES 1,250)</a></div>
     </div>
 
     <div id="auth-toast" class="auth-toast"></div>
@@ -571,7 +571,7 @@ function cancelSTK() {
   el("stk-waiting").style.display = "none";
   el("reg-form").style.display    = "block";
   const btn = el("btn-register");
-  btn.disabled = false; btn.innerText = "💚 Pay KES 1,800 & Unlock Access";
+  btn.disabled = false; btn.innerText = "💚 Pay KES 1,250 & Unlock Access";
 }
 
 // ================================================================
@@ -590,12 +590,12 @@ async function doRegister() {
   try {
     const res  = await fetch(BACKEND+"/api/auth/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({phone,pin,pin2})});
     const data = await res.json();
-    if (!res.ok) { authToast(data.message||"Registration failed","error"); btn.disabled=false; btn.innerText="💚 Pay KES 1,800 & Unlock Access"; return; }
+    if (!res.ok) { authToast(data.message||"Registration failed","error"); btn.disabled=false; btn.innerText="💚 Pay KES 1,250 & Unlock Access"; return; }
     el("reg-form").style.display="none"; el("stk-waiting").style.display="block";
     el("stk-phone-show").innerText=phone;
     setSTKStatus("pending","Waiting for M-Pesa payment...");
     pollRegistration(data.reference);
-  } catch { authToast("Network error. Try again.","error"); btn.disabled=false; btn.innerText="💚 Pay KES 1,800 & Unlock Access"; }
+  } catch { authToast("Network error. Try again.","error"); btn.disabled=false; btn.innerText="💚 Pay KES 1,250 & Unlock Access"; }
 }
 
 function pollRegistration(reference) {
